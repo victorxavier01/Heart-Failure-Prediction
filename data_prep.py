@@ -62,3 +62,14 @@ def split_dados(
     )
 
     return X_train, X_test, y_train, y_test
+
+def criar_preprocessador() -> ColumnTransformer:
+    """One-hot e StandardScaler"""
+
+    return ColumnTransformer(
+        transformers=[
+            ("cat", OneHotEncoder(handle_unknown="ignore"), COLUNAS_CATEGORICAS),
+            ("num", StandardScaler(), COLUNAS_NUMERICAS)
+        ],
+        remainder="drop"
+    )
