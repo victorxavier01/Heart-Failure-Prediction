@@ -16,7 +16,6 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
-from __future__ import annotations
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -58,7 +57,7 @@ def split_dados(
     y = df[TARGET]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
+        X, y, test_size=test_size, stratify=y, random_state=random_state
     )
 
     return X_train, X_test, y_train, y_test
@@ -73,3 +72,42 @@ def criar_preprocessador() -> ColumnTransformer:
         ],
         remainder="drop"
     )
+
+def criar_pipeline(modelo) -> Pipeline:
+    """O modelo SEMPRE deverá entrar aqui."""
+    return Pipeline([
+        ("prep", criar_preprocessador()),
+        ("model", modelo)
+    ])
+
+def pegar_nomes_features(pipeline: Pipeline) -> list[str]:
+    """Nomes das features após o preprocessamento (OneHotEncoder e StandardScaler)"""
+    return list(pipeline.named_steps['prep'].get_feature_names_out())
+
+def formatar_matriz_confusao(cm: np.ndarray) -> str:
+    lines = [" " * 10 + f"{'pred 0':>9} {'pred 1':>9}"]
+    for i in range(cm.shape[0]):
+        lines.append(f"{'true ' + str(i):>10} {cm[i][0]:>9d} {cm[i][1]:>9d}")
+    return "\n".join(lines)
+
+def avaliar_modelo(name: str, y_true: pd.Series, y_pred: np.ndarray, y_prob: np.ndarray) -> dict:
+    """Relatório padrão no test set"""
+
+    metrics = {
+        "model": name,
+        "accuracy": accuracy_score(y_true, y_pred),
+        "roc_auc": roc_auc_score(y_true, y_prob),
+        "precision": precision_score(y_true, y_pred),
+        "recall": recall_score(y_true, y_pred),
+        "f1": f1_score(y_true, y_pred)
+    }
+
+    print(f"Accuracy : {metrics['accuracy']:.4f}")
+    print(f"ROC-AUC  : {metrics['roc_auc']:.4f} (metrica principal)")
+    print(f"F1 (cl. 1): {metrics['f1']:.4f}")
+    print("\nClassification report (classe 1 = doença):")
+    print(classification_report(y_true, y_pred, digits=4, zero_division=0))
+    print("Matriz de confusão:")
+    print(formatar_matriz_confusao(np.asarray(confusion_matrix(y_true, y_pred))))
+
+    return metrics
